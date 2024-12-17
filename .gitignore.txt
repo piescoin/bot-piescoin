@@ -1,0 +1,10 @@
+# .gitignore
+*.log
+*.dat
+*.ini
+*.tmp
+.DS_Store
+.vscode/
+AppData/
+Desktop/
+Downloads/
