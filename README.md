@@ -13,3 +13,6 @@ Pies Coin Bot is a Telegram game bot allowing users to earn, upgrade, and intera
 2. Install dependencies: `pip install -r requirements.txt`
 3. Set your bot token in `settings.py`.
 4. Run the bot: `python bot.py`.
+
+### GitHub Repository
+The bot is hosted on GitHub: [Pies Coin Repository](https://github.com/piescoin/bot-piescoin.git)
