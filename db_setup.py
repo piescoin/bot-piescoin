@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine, Column, Integer, String # type: ignore
-from sqlalchemy.ext.declarative import declarative_base # type: ignore
-from sqlalchemy.orm import sessionmaker # type: ignore
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import os
 
-DATABASE_URL = "sqlite:///pies_coin.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///pies_coin.db")
 Base = declarative_base()
 
 class User(Base):
