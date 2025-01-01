@@ -1,13 +1,27 @@
-# Repository: https://github.com/piescoin/bot-piescoin.git
-
 import logging
 import os
 import asyncio
 from aiogram import Bot, Dispatcher
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 from aiogram.filters import Command
 from aiogram.dispatcher.router import Router
 from dotenv import load_dotenv
+import sys
+from pathlib import Path
+
+# Clone and import custom library
+REPO_URL = "https://github.com/piescoin/bot-piescoin.git"
+LIB_PATH = Path("bot_piescoin")
+
+if not LIB_PATH.exists():
+    os.system(f"git clone {REPO_URL}")
+sys.path.append(str(LIB_PATH))
+
+try:
+    from bot_piescoin.custom_module import CustomClass, helper_function  # Adjust imports based on the repo structure
+except ImportError:
+    logging.error("Failed to import the custom module from the repository.")
+    raise
 
 # Load environment variables
 load_dotenv()
@@ -27,16 +41,12 @@ DOG_IMAGES = {
     2: "images/dog_level_2.jpg",
     3: "images/dog_level_3.jpg",
 }
-ENERGY_ICON = "images/menu_icon.png"
 
 # Function to generate the main game screen
 def get_main_screen(user_data):
     caption = (
-        f"<b>🐕 Ваш Пес</b>
-"
-        f"<b>🔋 Енергія:</b> {user_data['energy']} / {MAX_ENERGY}
-
-"
+        f"<b>🐕 Ваш Пес</b>\n"
+        f"<b>🔋 Енергія:</b> {user_data['energy']} / {MAX_ENERGY}\n\n"
         "Натискайте на пса, щоб зібрати монети!"
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -62,22 +72,25 @@ async def send_welcome(message: Message):
     dog_image = DOG_IMAGES.get(user_data["level"], DOG_IMAGES[1])
     caption, keyboard = get_main_screen(user_data)
 
-    await message.answer_photo(
-        photo=open(dog_image, "rb"),
-        caption=caption,
-        reply_markup=keyboard,
-        parse_mode="HTML"
-    )
+    with open(dog_image, "rb") as photo:
+        await message.answer_photo(
+            photo=photo,  # Correctly passing the opened file
+            caption=caption,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
 
 @router.callback_query(lambda c: c.data == "open_menu")
 async def open_menu(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
+    if user_id not in users:
+        await callback_query.answer("Помилка: Користувач не знайдений.", show_alert=True)
+        return
+
     user_data = users[user_id]
 
     caption = (
-        f"<b>📋 Меню</b>
-
-"
+        f"<b>📋 Меню</b>\n\n"
         "Оберіть дію:"
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -92,19 +105,24 @@ async def open_menu(callback_query: CallbackQuery):
 @router.callback_query(lambda c: c.data == "back_to_game")
 async def back_to_game(callback_query: CallbackQuery):
     user_id = callback_query.from_user.id
+    if user_id not in users:
+        await callback_query.answer("Помилка: Користувач не знайдений.", show_alert=True)
+        return
+
     user_data = users[user_id]
 
     dog_image = DOG_IMAGES.get(user_data["level"], DOG_IMAGES[1])
     caption, keyboard = get_main_screen(user_data)
 
-    await callback_query.message.edit_caption(
-        caption=caption,
-        reply_markup=keyboard,
-        parse_mode="HTML"
-    )
-    await callback_query.message.edit_media(
-        media={"type": "photo", "media": open(dog_image, "rb")}
-    )
+    with open(dog_image, "rb") as photo:
+        await callback_query.message.edit_caption(
+            caption=caption,
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+        await callback_query.message.edit_media(
+            media=InputMediaPhoto(media=photo)
+        )
 
 async def main():
     dp = Dispatcher()
