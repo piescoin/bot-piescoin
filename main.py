@@ -15,17 +15,21 @@ LIB_PATH = Path("bot_piescoin")
 
 if not LIB_PATH.exists():
     os.system(f"git clone {REPO_URL}")
-sys.path.append(str(LIB_PATH))
+
+# Ensure the library path is correctly added to the system path
+sys.path.append(str(Path(__file__).parent / "bot_piescoin"))
 
 try:
     from bot_piescoin.custom_module import CustomClass, helper_function  # Adjust imports based on the repo structure
-except ImportError:
-    logging.error("Failed to import the custom module from the repository.")
+except ImportError as e:
+    logging.error(f"Failed to import the custom module from the repository: {e}")
     raise
 
 # Load environment variables
 load_dotenv()
-TOKEN = os.getenv("TELEGRAM_TOKEN", "7826649604:AAF7T4pSAAaf99ThPlfCDWSkkBPvXXBImhQ")
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+if not TOKEN:
+    raise ValueError("TELEGRAM_TOKEN is not set. Please check your .env file.")
 
 # Initialize bot and router
 bot = Bot(token=TOKEN)
@@ -45,12 +49,12 @@ DOG_IMAGES = {
 # Function to generate the main game screen
 def get_main_screen(user_data):
     caption = (
-        f"<b>🐕 Ваш Пес</b>\n"
-        f"<b>🔋 Енергія:</b> {user_data['energy']} / {MAX_ENERGY}\n\n"
+        f"<b>\ud83d\udc15 Ваш Пес</b>\n"
+        f"<b>\ud83d\udd0b Енергія:</b> {user_data['energy']} / {MAX_ENERGY}\n\n"
         "Натискайте на пса, щоб зібрати монети!"
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📋 Меню", callback_data="open_menu")]
+        [InlineKeyboardButton(text="\ud83d\udccb Меню", callback_data="open_menu")]
     ])
 
     return caption, keyboard
@@ -70,6 +74,13 @@ async def send_welcome(message: Message):
     # Show initial screen with the dog image
     user_data = users[user_id]
     dog_image = DOG_IMAGES.get(user_data["level"], DOG_IMAGES[1])
+
+    # Ensure the dog image file exists
+    if not Path(dog_image).is_file():
+        logging.error(f"Dog image not found: {dog_image}")
+        await message.answer("Помилка: Зображення пса не знайдено.")
+        return
+
     caption, keyboard = get_main_screen(user_data)
 
     with open(dog_image, "rb") as photo:
@@ -90,14 +101,14 @@ async def open_menu(callback_query: CallbackQuery):
     user_data = users[user_id]
 
     caption = (
-        f"<b>📋 Меню</b>\n\n"
+        f"<b>\ud83d\udccb Меню</b>\n\n"
         "Оберіть дію:"
     )
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="💪 Вдосконалення", callback_data="upgrade")],
-        [InlineKeyboardButton(text="👥 Реферали", callback_data="referrals")],
-        [InlineKeyboardButton(text="💎 Донат", callback_data="donate")],
-        [InlineKeyboardButton(text="🔙 Назад до гри", callback_data="back_to_game")]
+        [InlineKeyboardButton(text="\ud83d\udcaa Вдосконалення", callback_data="upgrade")],
+        [InlineKeyboardButton(text="\ud83d\udc65 Реферали", callback_data="referrals")],
+        [InlineKeyboardButton(text="\ud83d\udc8e Донат", callback_data="donate")],
+        [InlineKeyboardButton(text="\ud83d\udd19 Назад до гри", callback_data="back_to_game")]
     ])
 
     await callback_query.message.edit_text(caption, reply_markup=keyboard, parse_mode="HTML")
@@ -112,6 +123,11 @@ async def back_to_game(callback_query: CallbackQuery):
     user_data = users[user_id]
 
     dog_image = DOG_IMAGES.get(user_data["level"], DOG_IMAGES[1])
+    if not Path(dog_image).is_file():
+        logging.error(f"Dog image not found: {dog_image}")
+        await callback_query.message.answer("Помилка: Зображення пса не знайдено.")
+        return
+
     caption, keyboard = get_main_screen(user_data)
 
     with open(dog_image, "rb") as photo:
@@ -119,9 +135,6 @@ async def back_to_game(callback_query: CallbackQuery):
             caption=caption,
             reply_markup=keyboard,
             parse_mode="HTML"
-        )
-        await callback_query.message.edit_media(
-            media=InputMediaPhoto(media=photo)
         )
 
 async def main():
